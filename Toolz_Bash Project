@@ -1,0 +1,108 @@
+#!/bin/bash
+
+
+# -------- Colors --------
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+BLUE="\e[34m"
+RESET="\e[0m"
+
+# -------- Functions --------
+
+find_helper() {
+  echo -e "${BLUE}-- Find Helper --${RESET}"
+  read -rp "Enter directory to search in: " dir
+  read -rp "Enter filename pattern (e.g., *.txt): " pattern
+  if [[ ! -d "$dir" ]]; then
+    echo -e "${RED}Error: Directory does not exist.${RESET}"
+    return 1
+  fi
+  echo -e "Searching..."
+  find "$dir" -name "$pattern"
+}
+
+system_info() {
+  echo -e "${BLUE}-- System Information --${RESET}"
+  echo -e "${YELLOW}Memory:${RESET}"
+  free -h
+  echo -e "\n${YELLOW}Disk Usage:${RESET}"
+  df -h
+  echo -e "\n${YELLOW}Running Processes:${RESET}"
+  ps -e --no-headers | wc -l
+}
+
+process_management() {
+  echo -e "${BLUE}-- Process Management --${RESET}"
+  ps aux --sort=-%mem | head -n 10
+  read -rp "Enter PID to kill (or press Enter to cancel): " pid
+  if [[ -n "$pid" ]]; then
+    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+      read -rp "Are you sure you want to kill PID $pid? (y/n): " confirm
+      if [[ "$confirm" == "y" ]]; then
+        sudo kill "$pid" && echo -e "${GREEN}Process $pid killed.${RESET}" || echo -e "${RED}Failed to kill process.${RESET}"
+      else
+        echo "Cancelled."
+      fi
+    else
+      echo -e "${RED}Invalid PID.${RESET}"
+    fi
+  fi
+}
+
+user_management() {
+  echo -e "${BLUE}-- User Management --${RESET}"
+  echo -e "${YELLOW}Currently Logged-In Users:${RESET}"
+  who
+  echo -e "\n${YELLOW}Detailed User Info:${RESET}"
+  w
+  echo -e "\n${YELLOW}Last Logins:${RESET}"
+  last -a | head -n 5
+  echo -e "\n${YELLOW}Current User ID:${RESET}"
+  id
+}
+
+show_help() {
+  echo -e "${BLUE}Usage: toolz [option]${RESET}"
+  echo "  -f     Find helper (interactive find command)"
+  echo "  -s     System information"
+  echo "  -p     Process management"
+  echo "  -u     User management"
+  echo "  -h     Show help"
+  echo -e "\nExamples:"
+  echo "  ./toolz -f"
+  echo "  ./toolz -s"
+}
+
+menu_interface() {
+  echo -e "${BLUE}Welcome to TOOLZ - Choose an option:${RESET}"
+  select opt in "Find Helper" "System Info" "Process Management" "User Management" "Help" "Exit"; do
+    case $REPLY in
+      1) find_helper ;;
+      2) system_info ;;
+      3) process_management ;;
+      4) user_management ;;
+      5) show_help ;;
+      6) break ;;
+      *) echo "Invalid option" ;;
+    esac
+  done
+}
+
+# -------- Main Logic --------
+
+if [[ $# -eq 0 ]]; then
+  menu_interface
+  exit 0
+fi
+
+while getopts ":fspuh" opt; do
+  case $opt in
+    f) find_helper ;;
+    s) system_info ;;
+    p) process_management ;;
+    u) user_management ;;
+    h) show_help ;;
+    *) echo -e "${RED}Invalid option: -$OPTARG${RESET}" >&2; show_help; exit 1 ;;
+  esac
+done
